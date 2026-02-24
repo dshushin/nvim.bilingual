@@ -1,0 +1,96 @@
+\documentclass[a4paper,11pt]{article}
+
+% Geometry
+\usepackage[margin=2cm]{geometry}
+
+% Fonts — XeLaTeX
+\usepackage{fontspec}
+\setmainfont{PT Serif}
+\setsansfont{Helvetica Neue}
+\setmonofont{Menlo}
+
+% Multilingual support (loads bidi automatically)
+\usepackage{polyglossia}
+\setdefaultlanguage{english}
+\setotherlanguage{arabic}
+\setotherlanguage{hebrew}
+\newfontfamily\arabicfont{Al Nile}
+\newfontfamily\hebrewfont{Arial Hebrew}
+
+% Auto font switching for Arabic/Hebrew Unicode blocks
+\usepackage[Latin,Arabic,Hebrew]{ucharclasses}
+\setTransitionTo{Arabic}{\arabicfont}
+\setTransitionFrom{Arabic}{\rmfamily}
+\setTransitionTo{Hebrew}{\hebrewfont}
+\setTransitionFrom{Hebrew}{\rmfamily}
+
+% Parallel columns with page-break support
+\usepackage{paracol}
+\setlength{\columnsep}{1.5em}
+
+% Tables (for pandoc compatibility)
+\usepackage{booktabs,array,calc,tabularx}
+
+% Fix pandoc 3.x longtable caption counter
+\newcounter{none}
+% Provide longtable environment as alias for compatibility with pandoc output
+\usepackage{longtable}
+
+% No paragraph indent, add spacing between paragraphs
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt}
+
+% Remove horizontal rules from tables entirely
+\renewcommand{\toprule}{}
+\renewcommand{\midrule}{}
+\renewcommand{\bottomrule}{}
+
+% Disable section numbering (headings inside table cells get numbered otherwise)
+\setcounter{secnumdepth}{0}
+
+% Colors
+\usepackage{xcolor}
+\definecolor{rulecolor}{HTML}{B8860B}
+\definecolor{rulelight}{HTML}{CCCCCC}
+
+% Hyperlinks
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=blue!60!black,
+}
+
+% Section formatting
+\usepackage{titlesec}
+\titleformat{\section}{\large\bfseries}{}{0pt}{}
+\titleformat{\subsection}{\normalsize\bfseries}{}{0pt}{}
+
+% Header/footer
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\leftmark}
+\fancyhead[R]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% Tight list
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+% Begin document
+\begin{document}
+
+$if(title)$
+\begin{center}
+{\color{rulecolor}\rule{\linewidth}{1.5pt}}\\[0.8em]
+{\LARGE\bfseries $title$}\\[0.8em]
+$if(date)${\large $date$}\\[0.5em]$endif$
+{\color{rulecolor}\rule{\linewidth}{1.5pt}}
+\end{center}
+\vspace{1em}
+$endif$
+
+$body$
+
+\end{document}
