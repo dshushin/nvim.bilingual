@@ -13,10 +13,13 @@ end, {
   complete = function(_, line)
     local parts = vim.split(line, "%s+", { trimempty = true })
     if #parts <= 2 then
-      return { "new", "section", "pdf", "docx" }
+      return { "new", "section", "pdf", "docx", "redline", "accept" }
     end
     if parts[2] == "new" then
       return { "en-ru", "en-ar", "en-he" }
+    end
+    if parts[2] == "accept" or parts[2] == "redline" then
+      return { "pdf", "docx" }
     end
     return {}
   end,

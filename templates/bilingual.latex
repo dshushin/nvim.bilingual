@@ -12,6 +12,7 @@
 % Multilingual support (loads bidi automatically)
 \usepackage{polyglossia}
 \setdefaultlanguage{english}
+\setotherlanguage{russian}
 \setotherlanguage{arabic}
 \setotherlanguage{hebrew}
 \newfontfamily\arabicfont{Al Nile}
@@ -39,6 +40,7 @@
 % No paragraph indent, add spacing between paragraphs
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{6pt}
+\setlength{\emergencystretch}{2em}
 
 % Remove horizontal rules from tables entirely
 \renewcommand{\toprule}{}
@@ -52,6 +54,17 @@
 \usepackage{xcolor}
 \definecolor{rulecolor}{HTML}{B8860B}
 \definecolor{rulelight}{HTML}{CCCCCC}
+\definecolor{critic-add}{HTML}{006400}
+\definecolor{critic-del}{HTML}{8B0000}
+\definecolor{critic-comment}{HTML}{B8860B}
+\definecolor{critic-highlight}{HTML}{FFFACD}
+
+% CriticMarkup (Track Changes) styling
+\usepackage[normalem]{ulem}
+\newcommand{\criticadd}[1]{\textcolor{critic-add}{\uline{#1}}}
+\newcommand{\criticdel}[1]{\textcolor{critic-del}{\sout{#1}}}
+\newcommand{\criticcomment}[1]{\textcolor{critic-comment}{[\textit{#1}]}}
+\newcommand{\critichighlight}[1]{\colorbox{critic-highlight}{#1}}
 
 % Hyperlinks
 \usepackage{hyperref}

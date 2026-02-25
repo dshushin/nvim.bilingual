@@ -20,7 +20,9 @@ local rtl_langs = {
 }
 
 --- Export current file to PDF/DOCX
-function M.export(format)
+--- @param format string|nil "pdf", "docx", or nil (both)
+--- @param critic_mode string|nil "accept" to accept all changes, nil for redline
+function M.export(format, critic_mode)
   local file = vim.fn.expand("%:p")
   if file == "" then
     vim.notify("[bilingual] No file open", vim.log.levels.ERROR)
@@ -35,13 +37,20 @@ function M.export(format)
     return
   end
 
-  local flag = ""
-  if format == "pdf" then flag = " --pdf"
-  elseif format == "docx" then flag = " --docx"
+  local flags = {}
+  if format == "pdf" then flags[#flags + 1] = "--pdf"
+  elseif format == "docx" then flags[#flags + 1] = "--docx"
   end
+  if critic_mode == "accept" then flags[#flags + 1] = "--accept" end
 
-  local cmd = string.format("%s %s%s", vim.fn.shellescape(script), vim.fn.shellescape(file), flag)
-  vim.notify("[bilingual] Exporting" .. (format and (" " .. format) or "") .. "...")
+  local cmd = string.format("%s %s %s",
+    vim.fn.shellescape(script),
+    vim.fn.shellescape(file),
+    table.concat(flags, " "))
+
+  local label = format or "pdf+docx"
+  if critic_mode == "accept" then label = label .. " (clean)" end
+  vim.notify("[bilingual] Exporting " .. label .. "...")
 
   vim.fn.jobstart(cmd, {
     stdout_buffered = true,
@@ -135,10 +144,15 @@ function M.command(args)
     M.section()
   elseif cmd == "pdf" or cmd == "docx" then
     M.export(cmd)
+  elseif cmd == "accept" then
+    M.export(parts[2], "accept")
+  elseif cmd == "redline" then
+    M.export(parts[2])
   elseif not cmd or cmd == "" then
     M.export(nil)
   else
-    vim.notify("[bilingual] Unknown: " .. cmd .. ". Use: new, section, pdf, docx", vim.log.levels.ERROR)
+    vim.notify("[bilingual] Unknown: " .. cmd .. ". Use: new, section, pdf, docx, accept, redline",
+      vim.log.levels.ERROR)
   end
 end
 
@@ -147,9 +161,24 @@ function M.setup()
   vim.api.nvim_create_autocmd("FileType", {
     pattern = { "markdown", "mdx" },
     callback = function(ev)
+      -- Bilingual section insert
       vim.keymap.set("n", "<leader>bs", M.section, {
         buffer = ev.buf,
         desc = "Insert bilingual section",
+      })
+
+      -- CriticMarkup: wrap visual selection
+      vim.keymap.set("x", "<leader>ba", [[c{++<C-r>"++}<Esc>]], {
+        buffer = ev.buf,
+        desc = "CriticMarkup: mark addition",
+      })
+      vim.keymap.set("x", "<leader>bd", [[c{--<C-r>"--}<Esc>]], {
+        buffer = ev.buf,
+        desc = "CriticMarkup: mark deletion",
+      })
+      vim.keymap.set("x", "<leader>bc", [[c{>><C-r>"<<}<Esc>]], {
+        buffer = ev.buf,
+        desc = "CriticMarkup: add comment",
       })
     end,
   })

@@ -152,6 +152,39 @@ Add `dir=rtl` and `lang=` to the `.col` div:
 
 Font switching is automatic — when LaTeX encounters Arabic or Hebrew characters, it switches to the appropriate font via the `ucharclasses` package. This means Arabic text in document titles also renders correctly.
 
+## CriticMarkup (Track Changes)
+
+Mark changes directly in markdown using CriticMarkup syntax:
+
+```markdown
+The price shall be {--USD 50,000--}{++USD 75,000++}.
+This Agreement {~~shall~>may~~} be terminated.
+{>>Consider adding force majeure clause here<<}
+```
+
+| Syntax | Meaning | Redline rendering |
+|--------|---------|-------------------|
+| `{++text++}` | Addition | Green underline |
+| `{--text--}` | Deletion | Red strikethrough |
+| `{~~old~>new~~}` | Substitution | Red strikethrough + green underline |
+| `{>>comment<<}` | Comment | Yellow italic in brackets |
+| `{==text==}` | Highlight | Yellow background |
+
+### Export modes
+
+```vim
+:Bilingual pdf          " redline — show changes (default)
+:Bilingual accept pdf   " clean — accept all changes
+:Bilingual accept       " clean PDF + DOCX
+```
+
+From the command line:
+
+```bash
+./export.sh document.md --pdf             # redline
+./export.sh document.md --pdf --accept    # clean version
+```
+
 ## Commands
 
 | Command | Description |
@@ -164,6 +197,9 @@ Font switching is automatic — when LaTeX encounters Arabic or Hebrew character
 | `:Bilingual pdf` | Export current file to PDF |
 | `:Bilingual docx` | Export current file to DOCX |
 | `:Bilingual` | Export to both PDF and DOCX |
+| `:Bilingual accept` | Export clean version (accept all changes) |
+| `:Bilingual accept pdf` | Clean PDF only |
+| `:Bilingual redline` | Export with visible changes (default) |
 
 All commands have tab-completion.
 
@@ -172,6 +208,9 @@ All commands have tab-completion.
 | Key | Mode | Action |
 |-----|------|--------|
 | `<leader>bs` | Normal | Insert bilingual section at cursor |
+| `<leader>ba` | Visual | Mark selection as addition `{++...++}` |
+| `<leader>bd` | Visual | Mark selection as deletion `{--...--}` |
+| `<leader>bc` | Visual | Add comment `{>>...<<}` |
 
 Active only in markdown/mdx files.
 
