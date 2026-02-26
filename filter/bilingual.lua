@@ -51,22 +51,32 @@ local function extract_cols(div)
   return nil
 end
 
--- DOCX: each .bilingual → table (unchanged)
+-- DOCX: each .bilingual → table with one row per paragraph pair
 local function render_docx(div)
   local cols = extract_cols(div)
   if not cols then return nil end
 
-  local content1 = demote_headings(cols[1].content)
-  local content2 = demote_headings(cols[2].content)
+  local left_blocks = demote_headings(cols[1].content)
+  local right_blocks = demote_headings(cols[2].content)
 
   local dir1 = get_attr(cols[1], "dir") or "ltr"
   local dir2 = get_attr(cols[2], "dir") or "ltr"
 
-  if dir1 == "rtl" then
-    content1 = { pandoc.Div(content1, pandoc.Attr("", {}, {{"dir", "rtl"}})) }
-  end
-  if dir2 == "rtl" then
-    content2 = { pandoc.Div(content2, pandoc.Attr("", {}, {{"dir", "rtl"}})) }
+  local max_n = math.max(#left_blocks, #right_blocks)
+  local rows = {}
+
+  for k = 1, max_n do
+    local lb = left_blocks[k] and { left_blocks[k] } or {}
+    local rb = right_blocks[k] and { right_blocks[k] } or {}
+
+    if dir1 == "rtl" and #lb > 0 then
+      lb = { pandoc.Div(lb, pandoc.Attr("", {}, {{"dir", "rtl"}})) }
+    end
+    if dir2 == "rtl" and #rb > 0 then
+      rb = { pandoc.Div(rb, pandoc.Attr("", {}, {{"dir", "rtl"}})) }
+    end
+
+    rows[#rows + 1] = pandoc.Row({ pandoc.Cell(lb), pandoc.Cell(rb) })
   end
 
   local tbl = skeleton:clone()
@@ -75,7 +85,7 @@ local function render_docx(div)
     { pandoc.AlignDefault, 0.48 },
   }
   tbl.head = pandoc.TableHead({})
-  tbl.bodies[1].body = { pandoc.Row({ pandoc.Cell(content1), pandoc.Cell(content2) }) }
+  tbl.bodies[1].body = rows
   tbl.bodies[1].head = {}
 
   return tbl
@@ -85,10 +95,28 @@ end
 -- with \switchcolumn* for synchronization between sections
 function Pandoc(doc)
   if not FORMAT:match("latex") then
-    -- DOCX: process individual divs
-    return doc:walk({ Div = function(div)
-      if is_bilingual(div) then return render_docx(div) end
-    end })
+    -- DOCX: combine list title into single title with line breaks
+    local meta = doc.meta
+    if meta.title and type(meta.title) == "table" and #meta.title > 0 and not meta.title.t then
+      local combined = pandoc.Inlines({})
+      for i, item in ipairs(meta.title) do
+        if i > 1 then combined:insert(pandoc.LineBreak()) end
+        combined:extend(pandoc.Inlines(item))
+      end
+      meta.title = pandoc.MetaInlines(combined)
+    end
+
+    -- DOCX: process .bilingual divs into tables
+    local blocks = pandoc.List()
+    for _, block in ipairs(doc.blocks) do
+      if is_bilingual(block) then
+        local tbl = render_docx(block)
+        blocks:insert(tbl or block)
+      else
+        blocks:insert(block)
+      end
+    end
+    return pandoc.Pandoc(blocks, meta)
   end
 
   -- LaTeX: group consecutive .bilingual blocks
@@ -115,11 +143,9 @@ function Pandoc(doc)
         local dir1 = get_attr(cols[1], "dir") or "ltr"
         local dir2 = get_attr(cols[2], "dir") or "ltr"
 
-        local left = blocks_to_latex(demote_headings(cols[1].content))
-        local right = blocks_to_latex(demote_headings(cols[2].content))
-
-        if dir1 == "rtl" then left = "\\beginR\n" .. left .. "\\endR\n" end
-        if dir2 == "rtl" then right = "\\beginR\n" .. right .. "\\endR\n" end
+        local left_blocks = demote_headings(cols[1].content)
+        local right_blocks = demote_headings(cols[2].content)
+        local max_n = math.max(#left_blocks, #right_blocks)
 
         if j > 1 then
           -- Sync point + thin rule spanning both columns
@@ -129,17 +155,26 @@ function Pandoc(doc)
           parts[#parts + 1] = "\\begin{paracol}{2}"
         end
 
-        -- Left column
-        parts[#parts + 1] = left
+        -- Interleave paragraphs with sync points
+        for k = 1, max_n do
+          if k > 1 then
+            parts[#parts + 1] = "\\switchcolumn*"
+          end
 
-        -- Switch to right column (synced)
-        parts[#parts + 1] = "\\switchcolumn"
+          local left_tex = left_blocks[k] and blocks_to_latex({left_blocks[k]}) or ""
+          local right_tex = right_blocks[k] and blocks_to_latex({right_blocks[k]}) or ""
 
-        -- Right column
-        parts[#parts + 1] = right
+          if dir1 == "rtl" and left_tex ~= "" then
+            left_tex = "\\beginR\n" .. left_tex .. "\\endR\n"
+          end
+          if dir2 == "rtl" and right_tex ~= "" then
+            right_tex = "\\beginR\n" .. right_tex .. "\\endR\n"
+          end
 
-        -- Sync back to left for next section
-        parts[#parts + 1] = "\\switchcolumn*"
+          parts[#parts + 1] = left_tex
+          parts[#parts + 1] = "\\switchcolumn"
+          parts[#parts + 1] = right_tex
+        end
       end
 
       parts[#parts + 1] = "\\end{paracol}"

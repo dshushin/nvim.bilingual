@@ -1,6 +1,8 @@
 ---
-title: "[Title] / [العنوان]"
-date: "[Date]"
+title:
+  - "[Title]"
+  - "[العنوان]"
+date: "[Day] [Month], [Year]"
 ---
 
 ::: {.bilingual}

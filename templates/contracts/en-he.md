@@ -1,6 +1,8 @@
 ---
-title: "[Title] / [כותרת]"
-date: "[Date]"
+title:
+  - "[Title]"
+  - "[כותרת]"
+date: "[Day] [Month], [Year]"
 ---
 
 ::: {.bilingual}

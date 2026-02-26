@@ -1,6 +1,8 @@
 ---
-title: "Service Agreement / הסכם שירותים"
-date: "2026"
+title:
+  - "Service Agreement"
+  - "הסכם שירותים"
+date: "February 26, 2026"
 ---
 
 ::: {.bilingual}

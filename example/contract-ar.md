@@ -1,6 +1,8 @@
 ---
-title: "Sale and Purchase Agreement / عقد البيع والشراء"
-date: "2026"
+title:
+  - "Sale and Purchase Agreement"
+  - "عقد البيع والشراء"
+date: "February 26, 2026"
 ---
 
 ::: {.bilingual}

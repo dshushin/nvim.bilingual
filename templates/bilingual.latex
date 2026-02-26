@@ -97,8 +97,10 @@
 $if(title)$
 \begin{center}
 {\color{rulecolor}\rule{\linewidth}{1.5pt}}\\[0.8em]
-{\LARGE\bfseries $title$}\\[0.8em]
-$if(date)${\large $date$}\\[0.5em]$endif$
+$for(title)$
+{\LARGE\bfseries $title$}\\[0.3em]
+$endfor$
+$if(date)$\vspace{0.3em}{\large $date$}\\[0.5em]$endif$
 {\color{rulecolor}\rule{\linewidth}{1.5pt}}
 \end{center}
 \vspace{1em}

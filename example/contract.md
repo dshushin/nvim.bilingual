@@ -1,6 +1,8 @@
 ---
-title: "Sale and Purchase Agreement / Договор купли-продажи"
-date: "2026"
+title:
+  - "Sale and Purchase Agreement"
+  - "Договор купли-продажи"
+date: "February 26, 2026"
 ---
 
 ::: {.bilingual}
