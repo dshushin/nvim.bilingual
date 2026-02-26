@@ -4,26 +4,44 @@ Neovim plugin + pandoc tool for writing bilingual legal documents in markdown wi
 
 Built for legal contracts where text in two languages must appear side by side with synchronized sections.
 
+## Example
+
+Write in markdown with fenced divs — export to PDF and Word with a single command:
+
+**Markdown source** (Neovim)
+
+<img src="assets/example-markdown.png" width="720" alt="Bilingual markdown source in Neovim">
+
+**PDF output** (LuaLaTeX + paracol)
+
+<img src="assets/example-pdf.png" width="520" alt="PDF output — English / Arabic bilingual contract">
+
+**Word output** (DOCX tables)
+
+<img src="assets/example-docx.png" width="520" alt="DOCX output — English / Arabic bilingual contract">
+
 ## Features
 
 - **Parallel columns** — two languages side by side, sections aligned
 - **Page-break support** — columns flow naturally across pages (no gaps)
 - **RTL support** — Arabic, Hebrew with automatic font switching
 - **Contract templates** — ready-made skeletons for EN-RU, EN-AR, EN-HE
+- **Syntax highlighting** — colored markers for bilingual blocks, concealing support
+- **Block folding** — fold bilingual sections with preview from both columns
 - **Quick section insert** — keymap to add bilingual blocks without typing tags
 - **Export from nvim** — `:Bilingual pdf` / `:Bilingual docx`
-- **Professional PDF** — XeLaTeX with PT Serif, paracol, proper typography
+- **Professional PDF** — LuaLaTeX with PT Serif, paracol, proper typography
 - **Word export** — clean DOCX with two-column tables
 
 ## Requirements
 
 - Neovim >= 0.10
 - [pandoc](https://pandoc.org/) >= 3.0 — `brew install pandoc`
-- XeLaTeX (for PDF) — `brew install --cask mactex` or `brew install basictex`
+- LuaLaTeX (for PDF) — `brew install --cask mactex` or `brew install basictex`
 
 Fonts (bundled on macOS):
 - PT Serif, Helvetica Neue, Menlo
-- Al Nile (Arabic), Arial Hebrew (Hebrew)
+- Geeza Pro (Arabic), Arial Hebrew (Hebrew)
 
 ## Installation
 
@@ -109,8 +127,10 @@ Wrap bilingual sections in `::: {.bilingual}` with two `::: {.col}` children:
 
 ```markdown
 ---
-title: "Sale and Purchase Agreement / Договор купли-продажи"
-date: "2026"
+title:
+  - "Sale and Purchase Agreement"
+  - "Договор купли-продажи"
+date: "February 26, 2026"
 ---
 
 ::: {.bilingual}
@@ -147,10 +167,30 @@ Add `dir=rtl` and `lang=` to the `.col` div:
 | Attribute | Effect |
 |-----------|--------|
 | `dir=rtl` | Right-to-left text direction |
-| `lang=ar` | Arabic font (Al Nile) |
+| `lang=ar` | Arabic font (Geeza Pro) |
 | `lang=he` | Hebrew font (Arial Hebrew) |
 
-Font switching is automatic — when LaTeX encounters Arabic or Hebrew characters, it switches to the appropriate font via the `ucharclasses` package. This means Arabic text in document titles also renders correctly.
+Font switching is automatic — PT Serif is the main font with Geeza Pro (Arabic) and Arial Hebrew (Hebrew) as fallbacks via `luaotfload`. When LuaLaTeX encounters Arabic or Hebrew characters, it switches to the appropriate font automatically. This means Arabic text in document titles also renders correctly.
+
+### Editing RTL in Neovim
+
+For better display of Arabic/Hebrew in the editor, enable terminal bidi:
+
+```vim
+" init.vim
+set termbidi
+```
+
+```lua
+-- init.lua
+vim.opt.termbidi = true
+```
+
+This delegates bidirectional text rendering to the terminal. With `termbidi`, Arabic and Hebrew characters display in correct reading order. However, terminals always start lines from the left margin — full RTL paragraph alignment is not available. For correct RTL layout, use the PDF/DOCX export.
+
+**Note on RTL in editors:** No terminal or markdown editor fully supports RTL paragraph alignment for pandoc fenced divs. Arabic/Hebrew character order displays correctly in Typora and Terminal.app, but text remains left-aligned. Ghostty, iTerm2, and Neovide show reversed characters. For correct RTL layout with right-to-left alignment, use the PDF/DOCX export — the editor is for writing, the export is for reading.
+
+The plugin also provides syntax highlighting for bilingual blocks and folding (`zc` to fold, `zo` to open, `zM`/`zR` for all). Set `conceallevel=1` for a compact view that replaces `::: {.bilingual}` markers with minimal glyphs.
 
 ## CriticMarkup (Track Changes)
 
@@ -235,9 +275,9 @@ All placeholder values are marked with `[___]` for easy find-and-replace.
 1. Pandoc reads markdown and applies the Lua filter (`filter/bilingual.lua`)
 2. The filter collects consecutive `.bilingual` blocks into `paracol` environments
 3. Each section pair uses `\switchcolumn*` for vertical synchronization
-4. `ucharclasses` package auto-switches fonts for Arabic/Hebrew characters
+4. `luaotfload` fallback auto-switches fonts for Arabic/Hebrew characters
 5. `paracol` handles page breaks within parallel columns — no empty gaps
-6. XeLaTeX renders the final PDF
+6. LuaLaTeX with `babel` (`bidi=basic`) renders the final PDF with correct paragraph-level bidirectional text
 
 ### DOCX (Word)
 
@@ -266,10 +306,12 @@ nvim.bilingual/
 ├── plugin/bilingual.lua             -- bootstrap, commands
 ├── lua/bilingual/
 │   └── init.lua                     -- new, section, export, keymaps
+├── after/syntax/
+│   └── markdown.vim                 -- bilingual block highlighting + conceal
 ├── filter/
 │   └── bilingual.lua                -- pandoc Lua filter (paracol + tables)
 ├── templates/
-│   ├── bilingual.latex              -- LaTeX template (fonts, paracol, ucharclasses)
+│   ├── bilingual.latex              -- LaTeX template (fonts, paracol, babel bidi)
 │   └── contracts/
 │       ├── en-ru.md                 -- English / Russian template
 │       ├── en-ar.md                 -- English / Arabic template
@@ -278,6 +320,7 @@ nvim.bilingual/
 │   ├── contract.md                  -- EN-RU example
 │   ├── contract-ar.md               -- EN-AR example (RTL)
 │   └── contract-he.md               -- EN-HE example (RTL)
+├── assets/                          -- screenshots for README
 ├── export.sh                        -- CLI export script
 └── README.md
 ```

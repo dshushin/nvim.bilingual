@@ -133,6 +133,56 @@ function M.section()
   vim.api.nvim_win_set_cursor(0, { row + 3, 0 })
 end
 
+--- Fold expression for bilingual blocks
+--- @param lnum number line number
+--- @return string fold level
+function M.foldexpr(lnum)
+  local line = vim.fn.getline(lnum)
+  if line:match('^::: {%.bilingual}') then
+    return '>1'
+  end
+  if line:match('^::: {%.col') then
+    return '1'
+  end
+  if line:match('^:::$') then
+    local next_line = vim.fn.getline(lnum + 1) or ''
+    -- Still inside bilingual: next line opens a .col or closes another scope
+    if next_line:match('^::: {%.col') or next_line:match('^:::$') then
+      return '1'
+    end
+    -- This closes the bilingual block
+    return '<1'
+  end
+  return '='
+end
+
+--- Fold text — shows preview from both columns
+function M.foldtext()
+  local fstart = vim.v.foldstart
+  local fend = vim.v.foldend
+  local lines = fend - fstart + 1
+  local col1, col2 = '', ''
+  local in_col = 0
+  for l = fstart, fend do
+    local ln = vim.fn.getline(l)
+    if ln:match('^::: {%.col') then
+      in_col = in_col + 1
+    elseif not ln:match('^:::') and ln ~= '' then
+      local text = ln:gsub('^#+%s*', '')
+      if in_col == 1 and col1 == '' then
+        col1 = text
+      elseif in_col == 2 and col2 == '' then
+        col2 = text
+      end
+    end
+  end
+  local preview = col1
+  if col2 ~= '' then
+    preview = col1 .. '  ║  ' .. col2
+  end
+  return string.format('══ %s (%d lines) ══', preview, lines)
+end
+
 --- Command router
 function M.command(args)
   local parts = vim.split(args, "%s+", { trimempty = true })
@@ -166,6 +216,12 @@ function M.setup()
         buffer = ev.buf,
         desc = "Insert bilingual section",
       })
+
+      -- Bilingual block folding
+      vim.opt_local.foldmethod = 'expr'
+      vim.opt_local.foldexpr = 'v:lua.require("bilingual").foldexpr(v:lnum)'
+      vim.opt_local.foldtext = 'v:lua.require("bilingual").foldtext()'
+      vim.opt_local.foldlevel = 99 -- start with all folds open
 
       -- CriticMarkup: wrap visual selection
       vim.keymap.set("x", "<leader>ba", [[c{++<C-r>"++}<Esc>]], {

@@ -57,7 +57,7 @@ do_pdf() {
     --lua-filter="$CRITIC_FILTER" \
     --lua-filter="$FILTER" \
     --template="$TEMPLATE" \
-    --pdf-engine=xelatex \
+    --pdf-engine=lualatex \
     -V mainfont="PT Serif" \
     -V sansfont="Helvetica Neue" \
     -V monofont="Menlo" \

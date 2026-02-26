@@ -3,27 +3,32 @@
 % Geometry
 \usepackage[margin=2cm]{geometry}
 
-% Fonts — XeLaTeX
+% Fonts — PT Serif with Arabic/Hebrew fallback via luaotfload
 \usepackage{fontspec}
-\setmainfont{PT Serif}
+\directlua{
+  luaotfload.add_fallback("mainfallback", {
+    "Geeza Pro:mode=harf;script=arab;",
+    "Arial Hebrew:mode=harf;script=hebr;",
+  })
+  luaotfload.add_fallback("boldfallback", {
+    "Geeza Pro Bold:mode=harf;script=arab;",
+    "Arial Hebrew Bold:mode=harf;script=hebr;",
+  })
+}
+\setmainfont{PT Serif}[
+  RawFeature={fallback=mainfallback},
+  BoldFeatures={RawFeature={fallback=boldfallback}},
+]
 \setsansfont{Helvetica Neue}
 \setmonofont{Menlo}
 
-% Multilingual support (loads bidi automatically)
-\usepackage{polyglossia}
-\setdefaultlanguage{english}
-\setotherlanguage{russian}
-\setotherlanguage{arabic}
-\setotherlanguage{hebrew}
-\newfontfamily\arabicfont{Al Nile}
-\newfontfamily\hebrewfont{Arial Hebrew}
-
-% Auto font switching for Arabic/Hebrew Unicode blocks
-\usepackage[Latin,Arabic,Hebrew]{ucharclasses}
-\setTransitionTo{Arabic}{\arabicfont}
-\setTransitionFrom{Arabic}{\rmfamily}
-\setTransitionTo{Hebrew}{\hebrewfont}
-\setTransitionFrom{Hebrew}{\rmfamily}
+% Multilingual support — LuaLaTeX + babel with paragraph-level bidi
+\usepackage[bidi=basic]{babel}
+\babelprovide[main, import]{english}
+\babelprovide[import]{russian}
+\babelprovide[import]{arabic}
+\babelprovide[import]{hebrew}
+\renewcommand{\labelitemi}{\textbullet}
 
 % Parallel columns with page-break support
 \usepackage{paracol}

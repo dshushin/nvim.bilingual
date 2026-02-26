@@ -39,6 +39,24 @@ local function blocks_to_latex(blocks)
   return pandoc.write(pandoc.Pandoc(blocks), "latex")
 end
 
+-- Fix smart quotes for LaTeX RTL: replace backtick ligatures (``..'' )
+-- with straight quotes that render correctly in Arabic/Hebrew fonts
+local function fix_rtl_quotes(blocks)
+  local result = pandoc.List()
+  for _, block in ipairs(blocks) do
+    result:insert(pandoc.walk_block(block, {
+      Quoted = function(el)
+        local q = el.quotetype == "DoubleQuote" and '"' or "'"
+        local inlines = pandoc.List({pandoc.Str(q)})
+        inlines:extend(el.content)
+        inlines:insert(pandoc.Str(q))
+        return inlines
+      end
+    }))
+  end
+  return result
+end
+
 -- Extract two .col divs from a .bilingual div
 local function extract_cols(div)
   local cols = {}
@@ -51,16 +69,25 @@ local function extract_cols(div)
   return nil
 end
 
+-- Wrap a block in an RTL Div for DOCX (sets paragraph-level bidi + preserves style)
+local function make_rtl_block(block, style)
+  return pandoc.Div({block}, pandoc.Attr("", {}, {
+    {"dir", "rtl"},
+    {"custom-style", style or "Body Text"},
+  }))
+end
+
 -- DOCX: each .bilingual → table with one row per paragraph pair
 local function render_docx(div)
   local cols = extract_cols(div)
   if not cols then return nil end
 
-  local left_blocks = demote_headings(cols[1].content)
-  local right_blocks = demote_headings(cols[2].content)
-
   local dir1 = get_attr(cols[1], "dir") or "ltr"
   local dir2 = get_attr(cols[2], "dir") or "ltr"
+
+  local left_blocks = demote_headings(cols[1].content)
+  local right_blocks = demote_headings(cols[2].content)
+  -- DOCX: no character mirroring needed — Word handles bidi correctly
 
   local max_n = math.max(#left_blocks, #right_blocks)
   local rows = {}
@@ -69,11 +96,12 @@ local function render_docx(div)
     local lb = left_blocks[k] and { left_blocks[k] } or {}
     local rb = right_blocks[k] and { right_blocks[k] } or {}
 
+    local style = (k == 1) and "First Paragraph" or "Body Text"
     if dir1 == "rtl" and #lb > 0 then
-      lb = { pandoc.Div(lb, pandoc.Attr("", {}, {{"dir", "rtl"}})) }
+      lb = { make_rtl_block(lb[1], style) }
     end
     if dir2 == "rtl" and #rb > 0 then
-      rb = { pandoc.Div(rb, pandoc.Attr("", {}, {{"dir", "rtl"}})) }
+      rb = { make_rtl_block(rb[1], style) }
     end
 
     rows[#rows + 1] = pandoc.Row({ pandoc.Cell(lb), pandoc.Cell(rb) })
@@ -91,9 +119,43 @@ local function render_docx(div)
   return tbl
 end
 
+-- Wrap LaTeX content in a language-specific RTL environment (babel)
+local function wrap_rtl_latex(tex, lang)
+  if lang == "ar" then
+    return "\\begin{otherlanguage}{arabic}\n" .. tex .. "\\end{otherlanguage}\n"
+  elseif lang == "he" then
+    return "\\begin{otherlanguage}{hebrew}\n" .. tex .. "\\end{otherlanguage}\n"
+  else
+    return "\\begin{otherlanguage}{arabic}\n" .. tex .. "\\end{otherlanguage}\n"
+  end
+end
+
+-- Check if a string contains RTL characters (Arabic or Hebrew Unicode ranges)
+local function has_rtl(str)
+  for _, c in utf8.codes(str) do
+    if (c >= 0x0600 and c <= 0x06FF) or (c >= 0x0590 and c <= 0x05FF) then
+      return true
+    end
+  end
+  return false
+end
+
 -- LaTeX: merge consecutive .bilingual divs into one paracol environment
 -- with \switchcolumn* for synchronization between sections
 function Pandoc(doc)
+  -- LaTeX: wrap RTL title lines in babel's \foreignlanguage for correct direction
+  if FORMAT:match("latex") and doc.meta.title and type(doc.meta.title) == "table"
+      and #doc.meta.title > 0 and not doc.meta.title.t then
+    for i, item in ipairs(doc.meta.title) do
+      if has_rtl(pandoc.utils.stringify(item)) then
+        local inlines = pandoc.Inlines(item)
+        inlines:insert(1, pandoc.RawInline("latex", "\\foreignlanguage{arabic}{"))
+        inlines:insert(pandoc.RawInline("latex", "}"))
+        doc.meta.title[i] = pandoc.MetaInlines(inlines)
+      end
+    end
+  end
+
   if not FORMAT:match("latex") then
     -- DOCX: combine list title into single title with line breaks
     local meta = doc.meta
@@ -145,6 +207,8 @@ function Pandoc(doc)
 
         local left_blocks = demote_headings(cols[1].content)
         local right_blocks = demote_headings(cols[2].content)
+        if dir1 == "rtl" then left_blocks = fix_rtl_quotes(left_blocks) end
+        if dir2 == "rtl" then right_blocks = fix_rtl_quotes(right_blocks) end
         local max_n = math.max(#left_blocks, #right_blocks)
 
         if j > 1 then
@@ -165,10 +229,12 @@ function Pandoc(doc)
           local right_tex = right_blocks[k] and blocks_to_latex({right_blocks[k]}) or ""
 
           if dir1 == "rtl" and left_tex ~= "" then
-            left_tex = "\\beginR\n" .. left_tex .. "\\endR\n"
+            local lang1 = get_attr(cols[1], "lang") or ""
+            left_tex = wrap_rtl_latex(left_tex, lang1)
           end
           if dir2 == "rtl" and right_tex ~= "" then
-            right_tex = "\\beginR\n" .. right_tex .. "\\endR\n"
+            local lang2 = get_attr(cols[2], "lang") or ""
+            right_tex = wrap_rtl_latex(right_tex, lang2)
           end
 
           parts[#parts + 1] = left_tex
